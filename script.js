@@ -1,42 +1,30 @@
-const textInput = document.getElementById('textInput');
-const nameInput = document.getElementById('nameInput');
-const anonCheck = document.getElementById('anonCheck');
-const submitBtn = document.getElementById('submitBtn');
-const listDiv = document.getElementById('list');
+const msgEl = document.getElementById('msg');
+const anonEl = document.getElementById('anon');
+const listEl = document.getElementById('list');
+const btn = document.getElementById('submitBtn');
 
-// Auto-disable name input if anonymous is checked
-anonCheck.onchange = () => {
-  nameInput.disabled = anonCheck.checked;
-  if(anonCheck.checked) nameInput.value = "";
-};
-
-submitBtn.onclick = async () => {
-  const text = textInput.value;
-  const name = nameInput.value;
-  const anonymous = anonCheck.checked;
-
-  if(!text.trim()) return alert("Write something");
-
+btn.onclick = async () => {
+  const text = msgEl.value.trim();
+  if(!text) return alert("Type something");
   await fetch('/api/suggestions', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ text, name, anonymous })
+    body: JSON.stringify({ text, message: text, anonymous: anonEl.checked, name: anonEl.checked ? "" : "User" })
   });
-  location.reload();
+  msgEl.value = "";
+  load();
 };
 
 async function load() {
   const res = await fetch('/api/suggestions');
   const data = await res.json();
-  listDiv.innerHTML = data.map(s => {
-    const displayName = s.anonymous ? "Anonymous" : (s.name || "Anonymous");
-    const time = new Date(s.createdAt).toLocaleString();
-    return `<div style="border:1px solid #ddd; padding:10px; margin:8px 0; border-radius:8px;">
-      <b>${displayName}</b> • ${time}<br>${s.text}
+  // Handle both 'text' and 'message' field names
+  listEl.innerHTML = data.map(s => {
+    const content = s.text || s.message || "";
+    const author = s.anonymous ? "Anonymous" : (s.name || "Someone");
+    return `<div style="border-left:3px solid #4CAF50; padding:10px; margin:8px 0; background:#fff; border-radius:6px;">
+      <b>${author}</b>: ${content}
     </div>`;
-  }).join('');
+  }).join('') || "<i>No suggestions yet</i>";
 }
 load();
-
-// Run once on start
-nameInput.disabled = anonCheck.checked;
