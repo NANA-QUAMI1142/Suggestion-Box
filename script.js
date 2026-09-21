@@ -1,68 +1,42 @@
-const textarea = document.querySelector('textarea');
-const checkbox = document.querySelector('input[type="checkbox"]');
-const button = document.querySelector('button');
-const recentDiv = document.querySelector('div:last-child') || document.body;
+const textInput = document.getElementById('textInput');
+const nameInput = document.getElementById('nameInput');
+const anonCheck = document.getElementById('anonCheck');
+const submitBtn = document.getElementById('submitBtn');
+const listDiv = document.getElementById('list');
 
-async function loadSuggestions() {
-  try {
-    const res = await fetch('/api/suggestions');
-    const data = await res.json();
-    
-    let container = document.querySelector('#recent-list');
-    if (!container) {
-      // find the Recent Suggestions box
-      const boxes = document.querySelectorAll('div');
-      for (let b of boxes) {
-        if (b.innerHTML.includes('Recent Suggestions')) {
-          container = b;
-          break;
-        }
-      }
-    }
-    if (!container) return;
+// Auto-disable name input if anonymous is checked
+anonCheck.onchange = () => {
+  nameInput.disabled = anonCheck.checked;
+  if(anonCheck.checked) nameInput.value = "";
+};
 
-    // Keep title
-    const title = container.querySelector('h3') || document.createElement('h3');
-    
-    if (data.length === 0) {
-      container.innerHTML = '<h3>Recent Suggestions</h3><p>No suggestions yet</p>';
-      return;
-    }
+submitBtn.onclick = async () => {
+  const text = textInput.value;
+  const name = nameInput.value;
+  const anonymous = anonCheck.checked;
 
-    container.innerHTML = '<h3>Recent Suggestions</h3>' + data.slice().reverse().map(s => `
-      <div style="border-left:4px solid #4CAF50; padding:10px; margin:10px 0; background:#f9f9f9; border-radius:4px;">
-        <div style="font-size:15px;">${s.message}</div>
-        <small style="color:#777;">${s.anonymous ? 'Anonymous' : 'User'} • ${new Date(s.createdAt).toLocaleString()}</small>
-      </div>
-    `).join('');
+  if(!text.trim()) return alert("Write something");
 
-  } catch (e) {
-    console.log('load error', e);
-  }
-}
-
-if (button) {
-  button.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const msg = textarea.value.trim();
-    if (!msg) return alert('Type something');
-
-    button.textContent = 'Submitting...';
-    try {
-      const res = await fetch('/api/suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg, anonymous: checkbox.checked })
-      });
-      if (!res.ok) throw new Error('failed');
-      textarea.value = '';
-      loadSuggestions();
-    } catch (err) {
-      alert('Error submitting');
-    } finally {
-      button.textContent = 'Submit Suggestion';
-    }
+  await fetch('/api/suggestions', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ text, name, anonymous })
   });
-}
+  location.reload();
+};
 
-loadSuggestions();
+async function load() {
+  const res = await fetch('/api/suggestions');
+  const data = await res.json();
+  listDiv.innerHTML = data.map(s => {
+    const displayName = s.anonymous ? "Anonymous" : (s.name || "Anonymous");
+    const time = new Date(s.createdAt).toLocaleString();
+    return `<div style="border:1px solid #ddd; padding:10px; margin:8px 0; border-radius:8px;">
+      <b>${displayName}</b> • ${time}<br>${s.text}
+    </div>`;
+  }).join('');
+}
+load();
+
+// Run once on start
+nameInput.disabled = anonCheck.checked;

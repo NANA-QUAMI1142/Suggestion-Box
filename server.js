@@ -1,57 +1,37 @@
 const express = require('express');
-const path = require('path');
 const mongoose = require('mongoose');
+const path = require('path');
 const app = express();
-const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname,'public')));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost/suggestion-box')
-  .then(() => console.log('MongoDB connected'))
-  .catch(e => console.log('MongoDB error', e));
+mongoose.connect(process.env.MONGO_URI)
+  .then(()=>console.log("Mongo connected"))
+  .catch(e=>console.error(e));
 
-const suggestionSchema = new mongoose.Schema({
-  message: String,
-  anonymous: { type: Boolean, default: true },
-  likes: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now, expires: 259200 } // 259200 = 72h auto-delete!
+const Suggestion = mongoose.model('Suggestion', new mongoose.Schema({
+  text: String,
+  name: String,
+  anonymous: Boolean,
+  createdAt: { type: Date, default: Date.now, expires: 259200 }
+}));
+
+app.get('/api/suggestions', async (req,res)=>{
+  const list = await Suggestion.find().sort({createdAt:-1});
+  res.json(list);
 });
 
-const Suggestion = mongoose.model('Suggestion', suggestionSchema);
-
-app.get('/api/suggestions', async (req, res) => {
-  const items = await Suggestion.find().sort({ createdAt: -1 });
-  res.json(items);
-});
-
-app.post('/api/suggestions', async (req, res) => {
-  const message = req.body.message;
-  if (!message || !message.trim()) return res.status(400).json({ error: 'Message required' });
-  const item = await Suggestion.create({ 
-    message: message.trim(), 
-    anonymous: req.body.anonymous !== false 
+app.post('/api/suggestions', async (req,res)=>{
+  const {text, name, anonymous} = req.body;
+  if(!text || !text.trim()) return res.status(400).json({error:"Empty"});
+  const s = await Suggestion.create({
+    text,
+    name: anonymous ? null : name,
+    anonymous
   });
-  res.json(item);
+  res.json(s);
 });
 
-app.post('/api/suggestions/:id/like', async (req, res) => {
-  try {
-    const item = await Suggestion.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { likes: 1 } },
-      { new: true }
-    );
-    if (!item) return res.status(404).json({ error: 'Not found or expired' });
-    res.json(item);
-  } catch(e) {
-    res.status(400).json({ error: 'Invalid id' });
-  }
-});
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.listen(PORT, () => console.log('Running on', PORT));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=>console.log("Running on "+PORT));
