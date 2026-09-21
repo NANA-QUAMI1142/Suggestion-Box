@@ -19,12 +19,37 @@
     <button id="submitBtn">Submit Suggestion</button>
     <div id="status"></div>
   </div>
-
   <div class="card">
     <h3>Recent Suggestions</h3>
     <div id="list">Loading...</div>
   </div>
 
-  <script src="script.js?v=10"></script>
+<script>
+const msg = document.getElementById('msg');
+const btn = document.getElementById('submitBtn');
+const list = document.getElementById('list');
+const status = document.getElementById('status');
+
+async function load() {
+  try {
+    const res = await fetch('/api/suggestions');
+    const data = await res.json();
+    if (!data.length) { list.innerHTML = '<p>No suggestions yet</p>'; return; }
+    list.innerHTML = data.map(s => {
+      const text = s.text || s.message || '';
+      return `<div style="border-left:3px solid #4CAF50;padding:10px;margin:8px 0;background:#fff;border-radius:6px"><b>Anonymous</b>: ${text}<br><small style="color:#888">${new Date(s.createdAt).toLocaleString()}</small></div>`;
+    }).join('');
+  } catch(e) { list.innerHTML = '<p>Failed to load</p>'; }
+}
+async function submit() {
+  const text = msg.value.trim(); if(!text) return;
+  btn.disabled = true;
+  await fetch('/api/suggestions', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, anonymous:true})});
+  msg.value = ''; status.textContent = 'Submitted! ✅'; setTimeout(()=>status.textContent='',2000);
+  btn.disabled = false; load();
+}
+btn.addEventListener('click', submit);
+load();
+</script>
 </body>
 </html>
