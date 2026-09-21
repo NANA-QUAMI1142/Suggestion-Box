@@ -1,20 +1,51 @@
 const msg = document.getElementById('msg');
-const anon = document.getElementById('anon');
 const submitBtn = document.getElementById('submitBtn');
 const list = document.getElementById('list');
 const status = document.getElementById('status');
-const nameInput = document.getElementById('nameInput');
 
 async function load() {
-  const res = await fetch('/api/suggestions');
-  const data = await res.json();
-  if (!data.length) { list.innerHTML = '<p>No suggestions yet</p>'; return; }
-  list.innerHTML = data.map(s => `<div style="border-left:3px solid #4CAF50;padding:10px;margin:8px 0;background:#fff;border-radius:6px"><b>${s.anonymous?'Anonymous':s.name||'User'}</b>: ${s.text||s.message||''}<br><small style="color:#888">${new Date(s.createdAt).toLocaleString()}</small></div>`).join('');
+  try {
+    const res = await fetch('/api/suggestions');
+    const data = await res.json();
+    if (!data || data.length === 0) {
+      list.innerHTML = '<p>No suggestions yet</p>';
+      return;
+    }
+    list.innerHTML = data.map(s => {
+      const content = s.text || s.message || "";
+      const time = s.createdAt ? new Date(s.createdAt).toLocaleString() : "";
+      return `<div style="border-left:3px solid #4CAF50; padding:10px; margin:8px 0; background:#fff; border-radius:6px;">
+        <b>Anonymous</b>: ${content}
+        <br><small style="color:#888">${time}</small>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<p>Failed to load</p>';
+  }
 }
+
 async function submit() {
-  const text = msg.value.trim(); if(!text) return;
-  await fetch('/api/suggestions', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text, name: anon.checked?'Anonymous':(nameInput?.value||'User'), anonymous: anon.checked})});
-  msg.value=''; load();
+  const text = msg.value.trim();
+  if (!text) return;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting...";
+  try {
+    await fetch('/api/suggestions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ text: text, anonymous: true, name: "Anonymous" })
+    });
+    msg.value = '';
+    status.textContent = 'Submitted! ✅';
+    setTimeout(()=> status.textContent = '', 2000);
+    load();
+  } catch (e) {
+    alert('Failed');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit Suggestion";
+  }
 }
+
 submitBtn.addEventListener('click', submit);
 load();

@@ -7,45 +7,24 @@
   <style>
     body { font-family: monospace; background: #f5f5f5; padding: 20px; max-width: 600px; margin: auto; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    h2 { margin-top: 0; }
-    textarea, input[type="text"] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; }
-    textarea { height: 80px; resize: vertical; }
-    #nameInput { margin-bottom: 12px; display: none; }
-    label { display: block; margin: 10px 0; font-size: 14px; }
-    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    #submitBtn:hover { background: #45a049; }
-    #list div { border-left: 3px solid #4CAF50; padding: 10px; margin: 8px 0; background: #fff; border-radius: 6px; }
-    #status { font-size: 13px; color: green; margin-top: 8px; }
+    textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; height: 90px; }
+    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
   </style>
 </head>
 <body>
-
   <div class="card">
     <h2>💡 Suggestion Box</h2>
     <p>Share your ideas anonymously!</p>
-    
-    <input type="text" id="nameInput" placeholder="Your name">
     <textarea id="msg" placeholder="Type your suggestion here..."></textarea>
-    
-    <label><input type="checkbox" id="anon" checked> Submit anonymously</label>
-    
     <button id="submitBtn">Submit Suggestion</button>
     <div id="status"></div>
   </div>
 
   <div class="card">
     <h3>Recent Suggestions</h3>
-    <div id="list"><p>No suggestions yet</p></div>
+    <div id="list">Loading...</div>
   </div>
 
-  <script src="script.js?v=4"></script>
-  <script>
-    // Show/hide name box based on anonymous
-    const anonCheck = document.getElementById('anon');
-    const nameBox = document.getElementById('nameInput');
-    anonCheck.addEventListener('change', () => {
-      nameBox.style.display = anonCheck.checked ? 'none' : 'block';
-    });
-  </script>
+  <script src="script.js?v=10"></script>
 </body>
 </html>
