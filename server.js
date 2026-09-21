@@ -1,54 +1,62 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const Database = require('better-sqlite3');
+const form = document.querySelector('form') || document;
+const textarea = document.querySelector('textarea');
+const checkbox = document.querySelector('input[type="checkbox"]');
+const button = document.querySelector('button');
+const recentDiv = document.getElementById('recent') || document.querySelector('.recent');
 
-const app = express();
-const PORT = process.env.PORT || 10000;
-
-app.use(cors());
-app.use(express.json());
-
-// Serve frontend from root and public folder
-app.use(express.static(path.join(__dirname)));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Database
-const db = new Database('suggestions.db');
-db.exec(`
-  CREATE TABLE IF NOT EXISTS suggestions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    category TEXT,
-    message TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-
-app.get('/health', (req,res)=> res.send('OK'));
-
-app.post('/api/suggestions', (req,res)=>{
-  const { name, category, message } = req.body;
-  if(!message) return res.status(400).json({error:'Message required'});
-  const stmt = db.prepare('INSERT INTO suggestions (name, category, message) VALUES (?,?,?)');
-  const info = stmt.run(name||'Anonymous', category||'General', message);
-  res.json({success:true, id: info.lastInsertRowid});
-});
-
-app.get('/api/suggestions', (req,res)=>{
-  const rows = db.prepare('SELECT * FROM suggestions ORDER BY id DESC').all();
-  res.json(rows);
-});
-
-// Catch-all to fix your Not Found
-app.get('*', (req,res)=>{
-  res.sendFile(path.join(__dirname, 'index.html'), (err)=>{
-    if(err){
-      res.sendFile(path.join(__dirname, 'public', 'index.html'), (err2)=>{
-        if(err2) res.status(404).send('Not Found - index.html missing in root');
+// Submit
+if (button) {
+  button.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const message = textarea.value.trim();
+    if (!message) {
+      alert('Please type a message');
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: message,
+          anonymous: checkbox ? checkbox.checked : true
+        })
       });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      
+      textarea.value = '';
+      loadSuggestions();
+    } catch (err) {
+      // Show error like in your photo
+      let errDiv = document.querySelector('.error');
+      if (!errDiv) {
+        errDiv = document.createElement('div');
+        errDiv.className = 'error';
+        button.after(errDiv);
+      }
+      errDiv.textContent = `Error: ${err.message}`;
     }
   });
-});
+}
 
-app.listen(PORT, ()=> console.log(`Server running on ${PORT}`));
+// Load recent
+async function loadSuggestions() {
+  try {
+    const res = await fetch('/api/suggestions');
+    const suggestions = await res.json();
+    if (!recentDiv) return;
+    
+    recentDiv.innerHTML = '<h3>Recent Suggestions</h3>' + 
+      suggestions.reverse().map(s => `
+        <div style="border-left:3px solid #4CAF50; padding:8px; margin:8px 0; background:#f9f9f9">
+          <div>${s.message}</div>
+          <small style="color:#666">${s.anonymous ? 'Anonymous' : s.name || 'User'} - Submitted</small>
+        </div>
+      `).join('');
+  } catch (e) {}
+}
+
+loadSuggestions();
