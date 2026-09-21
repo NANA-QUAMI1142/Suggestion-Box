@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suggestion Box</title>
+  <style>
+    body{font-family:Arial; max-width:700px; margin:20px auto; padding:20px; background:#f5f5f5}
+    .card{background:white; padding:20px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); margin-bottom:20px}
+    textarea{width:100%; height:100px; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box}
+    button{background:#4CAF50; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-size:16px; width:100%; margin-top:10px}
+    button:hover{background:#45a049}
+    .suggestion{background:#fff; padding:15px; border-left:4px solid #4CAF50; margin-bottom:10px; border-radius:5px}
+    .anon{color:#888; font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>💡 Suggestion Box</h1>
+    <p>Share your ideas anonymously!</p>
+    <textarea id="text" placeholder="Type your suggestion here..."></textarea>
+    <label><input type="checkbox" id="anon" checked> Submit anonymously</label>
+    <button onclick="submitSuggestion()">Submit Suggestion</button>
+    <p id="msg"></p>
+  </div>
+
+  <div class="card">
+    <h2>Recent Suggestions</h2>
+    <div id="list">Loading...</div>
+  </div>
+
+<script>
+async function load(){
+  try{
+    const r = await fetch('/api/suggestions');
+    const data = await r.json();
+    const list = document.getElementById('list');
+    if(!data.length){ list.innerHTML = '<p>No suggestions yet.</p>'; return; }
+    list.innerHTML = data.reverse().map(s => `
+      <div class="suggestion">
+        <div>${s.text || s.log || JSON.stringify(s)}</div>
+        <div class="anon">${s.anon ? 'Anonymous' : s.who || ''} - ${s.status || ''}</div>
+      </div>
+    `).join('');
+  }catch(e){ document.getElementById('list').innerHTML = 'Failed to load'; }
+}
+async function submitSuggestion(){
+  const text = document.getElementById('text').value.trim();
+  const anon = document.getElementById('anon').checked;
+  if(!text) return alert('Please type a suggestion');
+  const res = await fetch('/api/suggestions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text, anon})
+  });
+  if(res.ok){
+    document.getElementById('msg').innerText = '✅ Submitted!';
+    document.getElementById('text').value = '';
+    load();
+  }else{
+    const err = await res.text();
+    document.getElementById('msg').innerText = 'Error: ' + err;
+  }
+}
+load();
+</script>
+</body>
+</html>
