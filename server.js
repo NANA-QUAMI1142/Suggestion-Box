@@ -1,64 +1,53 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const DATA_FILE = path.join(__dirname, 'suggestions.json');
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost/suggestion-box')
+  .then(() => console.log('MongoDB connected'))
+  .catch(e => console.log('MongoDB error', e));
 
-// Load from file if exists
-let suggestions = [];
-if (fs.existsSync(DATA_FILE)) {
-  try {
-    suggestions = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    console.log('Loaded', suggestions.length, 'suggestions from file');
-  } catch(e) { suggestions = []; }
-}
-
-function saveToFile() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(suggestions, null, 2));
-}
-
-function getActiveSuggestions() {
-  const cutoff = Date.now() - 72 * 60 * 60 * 1000;
-  const before = suggestions.length;
-  suggestions = suggestions.filter(s => new Date(s.createdAt).getTime() > cutoff);
-  if (suggestions.length !== before) saveToFile(); // save if we removed expired
-  return suggestions;
-}
-
-app.get('/api/suggestions', (req, res) => {
-  res.json(getActiveSuggestions());
+const suggestionSchema = new mongoose.Schema({
+  message: String,
+  anonymous: { type: Boolean, default: true },
+  likes: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now, expires: 259200 } // 259200 = 72h auto-delete!
 });
 
-app.post('/api/suggestions', (req, res) => {
-  const message = req.body.message || req.body.text || req.body.suggestion;
-  if (!message || !message.trim()) {
-    return res.status(400).json({ error: 'Message required' });
-  }
-  const newItem = { 
-    id: Date.now(), 
+const Suggestion = mongoose.model('Suggestion', suggestionSchema);
+
+app.get('/api/suggestions', async (req, res) => {
+  const items = await Suggestion.find().sort({ createdAt: -1 });
+  res.json(items);
+});
+
+app.post('/api/suggestions', async (req, res) => {
+  const message = req.body.message;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message required' });
+  const item = await Suggestion.create({ 
     message: message.trim(), 
-    anonymous: req.body.anonymous !== false, 
-    likes: 0,
-    createdAt: new Date() 
-  };
-  suggestions.push(newItem);
-  saveToFile();
-  res.json(newItem);
+    anonymous: req.body.anonymous !== false 
+  });
+  res.json(item);
 });
 
-app.post('/api/suggestions/:id/like', (req, res) => {
-  getActiveSuggestions();
-  const id = parseInt(req.params.id);
-  const item = suggestions.find(s => s.id === id);
-  if (!item) return res.status(404).json({ error: 'Not found or expired' });
-  item.likes = (item.likes || 0) + 1;
-  saveToFile();
-  res.json(item);
+app.post('/api/suggestions/:id/like', async (req, res) => {
+  try {
+    const item = await Suggestion.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { likes: 1 } },
+      { new: true }
+    );
+    if (!item) return res.status(404).json({ error: 'Not found or expired' });
+    res.json(item);
+  } catch(e) {
+    res.status(400).json({ error: 'Invalid id' });
+  }
 });
 
 app.get('*', (req, res) => {
