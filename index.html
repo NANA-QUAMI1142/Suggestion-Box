@@ -2,32 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Suggestion Box</title>
   <style>
     body { font-family: monospace; background: #f5f5f5; padding: 20px; max-width: 600px; margin: auto; }
-    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; height: 100px; }
-    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: opacity 0.3s; }
-    #submittedMsg { display: none; color: #4CAF50; font-weight: bold; margin-top: 10px; background: #e8f5e9; padding: 10px; border-radius: 6px; text-align: center; }
-    .sug-item { border-left: 4px solid #4CAF50; padding: 10px 12px; margin: 10px 0; background: #fafafa; border-radius: 6px; 
-      /* THIS FIXES WRAPPING */
-      word-wrap: break-word; 
-      overflow-wrap: break-word; 
-      word-break: break-word;
-      white-space: pre-wrap;
-      max-width: 100%;
+    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
+    textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; height: 100px; }
+    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+    #submittedMsg { display: none; background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
+    .sug-item { 
+      border-left: 4px solid #4CAF50; 
+      padding: 10px 12px; 
+      margin: 10px 0; 
+      background: #fafafa; 
+      border-radius: 6px;
+      width: 100%;
       box-sizing: border-box;
+      overflow: hidden;
+      /* FORCED WRAP - THIS IS THE FIX */
+      word-break: break-all !important;
+      overflow-wrap: anywhere !important;
+      white-space: pre-wrap !important;
     }
-    .sug-text { display: block; width: 100%; overflow: hidden; }
   </style>
 </head>
 <body>
 
   <div class="card">
     <h2>💡 Suggestion Box</h2>
-    <p>All suggestions are 100% anonymous</p>
-    <textarea id="msg" placeholder="Type your anonymous suggestion..."></textarea>
+    <p>All anonymous</p>
+    <textarea id="msg" placeholder="Type anonymous suggestion..."></textarea>
     <button id="submitBtn">Submit Suggestion</button>
     <div id="submittedMsg">✅ Submitted! Thank you</div>
   </div>
@@ -38,44 +43,39 @@
   </div>
 
 <script>
+// v30 - final fix
 const msg = document.getElementById('msg');
 const btn = document.getElementById('submitBtn');
 const list = document.getElementById('list');
 const submittedMsg = document.getElementById('submittedMsg');
 
 async function load() {
-  const res = await fetch('/api/suggestions');
+  const res = await fetch('/api/suggestions?t=' + Date.now());
   const data = await res.json();
   if (!data.length) { list.innerHTML = '<p>No suggestions yet</p>'; return; }
-  
   list.innerHTML = data.map(s => {
-    let text = s.text || s.message || '';
-    // HIDE THE BUGGY JSON ENTRY
-    if (text.trim().startsWith('{"_id"')) return '';
-    // Prevent overflow from long words
-    return `<div class="sug-item"><b>Anonymous:</b> <span class="sug-text">${text}</span><br><small style="color:#888">-</small></div>`;
+    let text = (s.text || s.message || '').toString();
+    if (text.trim().startsWith('{"_id"')) return ''; // hide buggy json
+    return `<div class="sug-item"><b>Anonymous:</b> ${text}<br><small style="color:#888">-</small></div>`;
   }).join('');
 }
 
 async function submit() {
   const text = msg.value.trim();
   if (!text) return;
-  // Don't allow submitting JSON
-  if (text.startsWith('{"_id"')) { alert('Invalid text'); return; }
-
-  btn.style.display = 'none';
-  submittedMsg.style.display = 'block';
-
   await fetch('/api/suggestions', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ text: text, anonymous: true })
+    body: JSON.stringify({ text, anonymous: true })
   });
-
   msg.value = '';
+  
+  // HIDE BUTTON, SHOW SUBMITTED
+  btn.style.display = 'none';
+  submittedMsg.style.display = 'block';
   load();
 
-  // AFTER 3 SECONDS - Button comes back, Submitted disappears
+  // AFTER 3 SECONDS, HIDE SUBMITTED, SHOW BUTTON AGAIN
   setTimeout(() => {
     submittedMsg.style.display = 'none';
     btn.style.display = 'block';
