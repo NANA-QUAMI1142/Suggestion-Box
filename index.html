@@ -3,15 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Suggestion Box - Anonymous</title>
+  <title>Suggestion Box</title>
   <style>
     body { font-family: monospace; background: #f5f5f5; padding: 20px; max-width: 600px; margin: auto; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; height: 100px; font-size: 14px; }
-    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 12px; font-size: 15px; }
-    #submitBtn:disabled { background: #999; }
-    .sug-item { border-left: 4px solid #4CAF50; padding: 10px 12px; margin: 10px 0; background: #fafafa; border-radius: 6px; }
-    .sug-time { font-size: 11px; color: #888; margin-top: 4px; }
+    textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; height: 100px; }
+    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: opacity 0.3s; }
+    #submittedMsg { display: none; color: #4CAF50; font-weight: bold; margin-top: 10px; background: #e8f5e9; padding: 10px; border-radius: 6px; text-align: center; }
+    .sug-item { border-left: 4px solid #4CAF50; padding: 10px 12px; margin: 10px 0; background: #fafafa; border-radius: 6px; 
+      /* THIS FIXES WRAPPING */
+      word-wrap: break-word; 
+      overflow-wrap: break-word; 
+      word-break: break-word;
+      white-space: pre-wrap;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    .sug-text { display: block; width: 100%; overflow: hidden; }
   </style>
 </head>
 <body>
@@ -19,9 +27,9 @@
   <div class="card">
     <h2>💡 Suggestion Box</h2>
     <p>All suggestions are 100% anonymous</p>
-    <textarea id="msg" placeholder="Type your anonymous suggestion here..."></textarea>
-    <button id="submitBtn">Submit Anonymously</button>
-    <div id="status" style="margin-top:8px; color:green; font-weight:bold;"></div>
+    <textarea id="msg" placeholder="Type your anonymous suggestion..."></textarea>
+    <button id="submitBtn">Submit Suggestion</button>
+    <div id="submittedMsg">✅ Submitted! Thank you</div>
   </div>
 
   <div class="card">
@@ -33,52 +41,49 @@
 const msg = document.getElementById('msg');
 const btn = document.getElementById('submitBtn');
 const list = document.getElementById('list');
-const status = document.getElementById('status');
+const submittedMsg = document.getElementById('submittedMsg');
 
 async function load() {
-  try {
-    const res = await fetch('/api/suggestions');
-    const data = await res.json();
-    if (!data || data.length === 0) {
-      list.innerHTML = '<p>No suggestions yet. Be the first!</p>';
-      return;
-    }
-    list.innerHTML = data.map(s => {
-      const text = s.text || s.message || '';
-      const time = s.createdAt ? new Date(s.createdAt).toLocaleString() : '';
-      return `<div class="sug-item"><b>Anonymous</b>: ${text}<div class="sug-time">${time}</div></div>`;
-    }).join('');
-  } catch (e) {
-    list.innerHTML = '<p>Failed to load suggestions</p>';
-  }
+  const res = await fetch('/api/suggestions');
+  const data = await res.json();
+  if (!data.length) { list.innerHTML = '<p>No suggestions yet</p>'; return; }
+  
+  list.innerHTML = data.map(s => {
+    let text = s.text || s.message || '';
+    // HIDE THE BUGGY JSON ENTRY
+    if (text.trim().startsWith('{"_id"')) return '';
+    // Prevent overflow from long words
+    return `<div class="sug-item"><b>Anonymous:</b> <span class="sug-text">${text}</span><br><small style="color:#888">-</small></div>`;
+  }).join('');
 }
 
 async function submit() {
   const text = msg.value.trim();
-  if (!text) return alert('Type something!');
-  btn.disabled = true;
-  btn.textContent = 'Submitting...';
-  try {
-    await fetch('/api/suggestions', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ text: text, anonymous: true, name: 'Anonymous' })
-    });
-    msg.value = '';
-    status.textContent = 'Submitted anonymously! ✅';
-    setTimeout(()=> status.textContent = '', 3000);
-    load();
-  } catch (e) {
-    alert('Failed to submit');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Submit Anonymously';
-  }
+  if (!text) return;
+  // Don't allow submitting JSON
+  if (text.startsWith('{"_id"')) { alert('Invalid text'); return; }
+
+  btn.style.display = 'none';
+  submittedMsg.style.display = 'block';
+
+  await fetch('/api/suggestions', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ text: text, anonymous: true })
+  });
+
+  msg.value = '';
+  load();
+
+  // AFTER 3 SECONDS - Button comes back, Submitted disappears
+  setTimeout(() => {
+    submittedMsg.style.display = 'none';
+    btn.style.display = 'block';
+  }, 3000);
 }
 
 btn.addEventListener('click', submit);
 load();
 </script>
-
 </body>
 </html>
