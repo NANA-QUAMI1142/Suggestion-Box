@@ -2,7 +2,6 @@
     "name":"E-suggest-server",
     "version":"1.0.0",
     "engines":{"node": "20.x"},
-    "type":"module",
     "scripts":{"start":"node server.js"},
     "dependencies":{"better-sqlite3":"^9.1.1","express":"^4.18.2","cors": "2.8.5"}
 }
