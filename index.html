@@ -12,25 +12,31 @@
     #nameField { display: none; margin-top: 10px; }
     #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
     #submittedMsg { display: none; background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
-    .sug-item { border-left: 4px solid #4CAF50; padding: 10px 12px; margin: 10px 0; background: #fafafa; border-radius: 6px; box-sizing: border-box; word-break: break-all !important; overflow-wrap: anywhere !important; white-space: pre-wrap !important; }
+    .sug-item { 
+      border-left: 4px solid #4CAF50; 
+      padding: 10px 12px; 
+      margin: 10px 0; 
+      background: #fafafa; 
+      border-radius: 6px; 
+      box-sizing: border-box;
+      word-break: break-all !important;
+      overflow-wrap: anywhere !important;
+      white-space: pre-wrap !important;
+    }
+    .sug-meta { font-size: 11px; color: #888; margin-top: 5px; display: block; }
   </style>
 </head>
 <body>
 
   <div class="card">
     <h2>💡 Suggestion Box</h2>
-    
-    <label style="display:flex; align-items:center; gap:6px; margin-bottom:10px; cursor:pointer;">
+    <label style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
       <input type="checkbox" id="anonCheck" checked> Submit anonymously
     </label>
-
-    <div id="nameField">
-      <input type="text" id="nameInput" placeholder="Your name (optional)">
-    </div>
-
-    <textarea id="msg" placeholder="Type your suggestion here..."></textarea>
+    <div id="nameField"><input type="text" id="nameInput" placeholder="Your name"></div>
+    <textarea id="msg" placeholder="Type your suggestion..."></textarea>
     <button id="submitBtn">Submit Suggestion</button>
-    <div id="submittedMsg">✅ Submitted! Thank you</div>
+    <div id="submittedMsg">✅ Submitted!</div>
   </div>
 
   <div class="card">
@@ -47,7 +53,6 @@ const nameField = document.getElementById('nameField');
 const nameInput = document.getElementById('nameInput');
 const submittedMsg = document.getElementById('submittedMsg');
 
-// Show/hide name field
 anonCheck.addEventListener('change', () => {
   nameField.style.display = anonCheck.checked ? 'none' : 'block';
 });
@@ -60,19 +65,17 @@ async function load() {
     let text = (s.text || s.message || '').toString();
     if (text.trim().startsWith('{"_id"')) return '';
     let displayName = s.anonymous ? 'Anonymous' : (s.name || 'Anonymous');
-    return `<div class="sug-item"><b>${displayName}:</b> ${text}<br><small style="color:#888">-</small></div>`;
+    let time = s.createdAt ? new Date(s.createdAt).toLocaleString() : '';
+    // THIS FIXES THE - ISSUE
+    return `<div class="sug-item"><b>${displayName}:</b> ${text}<span class="sug-meta">${displayName} • ${time}</span></div>`;
   }).join('');
 }
 
 async function submit() {
   const text = msg.value.trim();
-  if (!text) return alert('Type something!');
+  if (!text) return;
   const isAnonymous = anonCheck.checked;
-  const name = isAnonymous ? null : (nameInput.value.trim() || 'Anonymous');
-
-  if (!isAnonymous && !nameInput.value.trim()) {
-    if (!confirm('You left name empty. Submit as Anonymous?')) return;
-  }
+  const name = isAnonymous ? null : (nameInput.value.trim() || null);
 
   await fetch('/api/suggestions', {
     method: 'POST',
