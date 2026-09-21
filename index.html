@@ -3,22 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Suggestion Box</title>
+  <title>Suggestion Box - Anonymous</title>
   <style>
     body { font-family: monospace; background: #f5f5f5; padding: 20px; max-width: 600px; margin: auto; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; height: 90px; }
-    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+    textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; height: 100px; font-size: 14px; }
+    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 12px; font-size: 15px; }
+    #submitBtn:disabled { background: #999; }
+    .sug-item { border-left: 4px solid #4CAF50; padding: 10px 12px; margin: 10px 0; background: #fafafa; border-radius: 6px; }
+    .sug-time { font-size: 11px; color: #888; margin-top: 4px; }
   </style>
 </head>
 <body>
+
   <div class="card">
     <h2>💡 Suggestion Box</h2>
-    <p>Share your ideas anonymously!</p>
-    <textarea id="msg" placeholder="Type your suggestion here..."></textarea>
-    <button id="submitBtn">Submit Suggestion</button>
-    <div id="status"></div>
+    <p>All suggestions are 100% anonymous</p>
+    <textarea id="msg" placeholder="Type your anonymous suggestion here..."></textarea>
+    <button id="submitBtn">Submit Anonymously</button>
+    <div id="status" style="margin-top:8px; color:green; font-weight:bold;"></div>
   </div>
+
   <div class="card">
     <h3>Recent Suggestions</h3>
     <div id="list">Loading...</div>
@@ -34,22 +39,46 @@ async function load() {
   try {
     const res = await fetch('/api/suggestions');
     const data = await res.json();
-    if (!data.length) { list.innerHTML = '<p>No suggestions yet</p>'; return; }
+    if (!data || data.length === 0) {
+      list.innerHTML = '<p>No suggestions yet. Be the first!</p>';
+      return;
+    }
     list.innerHTML = data.map(s => {
       const text = s.text || s.message || '';
-      return `<div style="border-left:3px solid #4CAF50;padding:10px;margin:8px 0;background:#fff;border-radius:6px"><b>Anonymous</b>: ${text}<br><small style="color:#888">${new Date(s.createdAt).toLocaleString()}</small></div>`;
+      const time = s.createdAt ? new Date(s.createdAt).toLocaleString() : '';
+      return `<div class="sug-item"><b>Anonymous</b>: ${text}<div class="sug-time">${time}</div></div>`;
     }).join('');
-  } catch(e) { list.innerHTML = '<p>Failed to load</p>'; }
+  } catch (e) {
+    list.innerHTML = '<p>Failed to load suggestions</p>';
+  }
 }
+
 async function submit() {
-  const text = msg.value.trim(); if(!text) return;
+  const text = msg.value.trim();
+  if (!text) return alert('Type something!');
   btn.disabled = true;
-  await fetch('/api/suggestions', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, anonymous:true})});
-  msg.value = ''; status.textContent = 'Submitted! ✅'; setTimeout(()=>status.textContent='',2000);
-  btn.disabled = false; load();
+  btn.textContent = 'Submitting...';
+  try {
+    await fetch('/api/suggestions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ text: text, anonymous: true, name: 'Anonymous' })
+    });
+    msg.value = '';
+    status.textContent = 'Submitted anonymously! ✅';
+    setTimeout(()=> status.textContent = '', 3000);
+    load();
+  } catch (e) {
+    alert('Failed to submit');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit Anonymously';
+  }
 }
+
 btn.addEventListener('click', submit);
 load();
 </script>
+
 </body>
 </html>
