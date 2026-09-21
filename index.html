@@ -2,37 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Suggestion Box</title>
   <style>
     body { font-family: monospace; background: #f5f5f5; padding: 20px; max-width: 600px; margin: auto; }
     .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
-    textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; height: 100px; }
+    textarea, input[type="text"] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; }
+    textarea { height: 90px; }
+    #nameField { display: none; margin-top: 10px; }
     #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
     #submittedMsg { display: none; background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
-    .sug-item { 
-      border-left: 4px solid #4CAF50; 
-      padding: 10px 12px; 
-      margin: 10px 0; 
-      background: #fafafa; 
-      border-radius: 6px;
-      width: 100%;
-      box-sizing: border-box;
-      overflow: hidden;
-      /* FORCED WRAP - THIS IS THE FIX */
-      word-break: break-all !important;
-      overflow-wrap: anywhere !important;
-      white-space: pre-wrap !important;
-    }
+    .sug-item { border-left: 4px solid #4CAF50; padding: 10px 12px; margin: 10px 0; background: #fafafa; border-radius: 6px; box-sizing: border-box; word-break: break-all !important; overflow-wrap: anywhere !important; white-space: pre-wrap !important; }
   </style>
 </head>
 <body>
 
   <div class="card">
     <h2>💡 Suggestion Box</h2>
-    <p>All anonymous</p>
-    <textarea id="msg" placeholder="Type anonymous suggestion..."></textarea>
+    
+    <label style="display:flex; align-items:center; gap:6px; margin-bottom:10px; cursor:pointer;">
+      <input type="checkbox" id="anonCheck" checked> Submit anonymously
+    </label>
+
+    <div id="nameField">
+      <input type="text" id="nameInput" placeholder="Your name (optional)">
+    </div>
+
+    <textarea id="msg" placeholder="Type your suggestion here..."></textarea>
     <button id="submitBtn">Submit Suggestion</button>
     <div id="submittedMsg">✅ Submitted! Thank you</div>
   </div>
@@ -43,11 +39,18 @@
   </div>
 
 <script>
-// v30 - final fix
 const msg = document.getElementById('msg');
 const btn = document.getElementById('submitBtn');
 const list = document.getElementById('list');
+const anonCheck = document.getElementById('anonCheck');
+const nameField = document.getElementById('nameField');
+const nameInput = document.getElementById('nameInput');
 const submittedMsg = document.getElementById('submittedMsg');
+
+// Show/hide name field
+anonCheck.addEventListener('change', () => {
+  nameField.style.display = anonCheck.checked ? 'none' : 'block';
+});
 
 async function load() {
   const res = await fetch('/api/suggestions?t=' + Date.now());
@@ -55,27 +58,33 @@ async function load() {
   if (!data.length) { list.innerHTML = '<p>No suggestions yet</p>'; return; }
   list.innerHTML = data.map(s => {
     let text = (s.text || s.message || '').toString();
-    if (text.trim().startsWith('{"_id"')) return ''; // hide buggy json
-    return `<div class="sug-item"><b>Anonymous:</b> ${text}<br><small style="color:#888">-</small></div>`;
+    if (text.trim().startsWith('{"_id"')) return '';
+    let displayName = s.anonymous ? 'Anonymous' : (s.name || 'Anonymous');
+    return `<div class="sug-item"><b>${displayName}:</b> ${text}<br><small style="color:#888">-</small></div>`;
   }).join('');
 }
 
 async function submit() {
   const text = msg.value.trim();
-  if (!text) return;
+  if (!text) return alert('Type something!');
+  const isAnonymous = anonCheck.checked;
+  const name = isAnonymous ? null : (nameInput.value.trim() || 'Anonymous');
+
+  if (!isAnonymous && !nameInput.value.trim()) {
+    if (!confirm('You left name empty. Submit as Anonymous?')) return;
+  }
+
   await fetch('/api/suggestions', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ text, anonymous: true })
+    body: JSON.stringify({ text, name, anonymous: isAnonymous })
   });
-  msg.value = '';
-  
-  // HIDE BUTTON, SHOW SUBMITTED
+
+  msg.value = ''; nameInput.value = '';
   btn.style.display = 'none';
   submittedMsg.style.display = 'block';
   load();
 
-  // AFTER 3 SECONDS, HIDE SUBMITTED, SHOW BUTTON AGAIN
   setTimeout(() => {
     submittedMsg.style.display = 'none';
     btn.style.display = 'block';
