@@ -8,8 +8,15 @@ app.use(express.static(__dirname));
 
 let suggestions = [];
 
+// Helper: remove suggestions older than 72 hours
+function getActiveSuggestions() {
+  const cutoff = Date.now() - 72 * 60 * 60 * 1000; // 72 hours
+  suggestions = suggestions.filter(s => new Date(s.createdAt).getTime() > cutoff);
+  return suggestions;
+}
+
 app.get('/api/suggestions', (req, res) => {
-  res.json(suggestions);
+  res.json(getActiveSuggestions());
 });
 
 app.post('/api/suggestions', (req, res) => {
@@ -17,9 +24,25 @@ app.post('/api/suggestions', (req, res) => {
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Message required' });
   }
-  const newItem = { id: Date.now(), message: message.trim(), anonymous: true, createdAt: new Date() };
+  const newItem = { 
+    id: Date.now(), 
+    message: message.trim(), 
+    anonymous: true, 
+    likes: 0,
+    createdAt: new Date() 
+  };
   suggestions.push(newItem);
   res.json(newItem);
+});
+
+// NEW: Like a suggestion
+app.post('/api/suggestions/:id/like', (req, res) => {
+  getActiveSuggestions();
+  const id = parseInt(req.params.id);
+  const item = suggestions.find(s => s.id === id);
+  if (!item) return res.status(404).json({ error: 'Not found or expired' });
+  item.likes = (item.likes || 0) + 1;
+  res.json(item);
 });
 
 app.get('*', (req, res) => {
