@@ -3,28 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Suggestion Box</title>
+<title>Admin Panel</title>
 <style>
 body{font-family:Arial;background:#f4f6f9;padding:20px}
-.box{max-width:600px;margin:auto;background:white;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
+.box{max-width:600px;margin:auto;background:white;padding:25px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
+h2{margin-top:0}
+.back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:#f0f2f5;
+  color:#1a8a4a;
+  border:1px solid #d0d7de;
+  padding:8px 14px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:bold;
+  text-decoration:none;
+  cursor:pointer;
+  transition:0.2s;
+}
+.back-btn:hover{
+  background:#1a8a4a;
+  color:white;
+  border-color:#1a8a4a;
+}
 .sugg{border:1px solid #eee;padding:12px;margin-top:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
-.meta{font-size:12px;color:#888}
+.meta{font-size:11px;color:#888}
 .del{background:#e74c3c;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer}
+.del:hover{background:#c0392b}
 </style>
 </head>
 <body>
 <div class="box">
 <h2>🔒 Admin Only</h2>
-<a href="/">← Back to Home</a>
-<div id="list">Loading...</div>
+<a href="/" class="back-btn">← Back to Home</a>
+<div id="list" style="margin-top:20px">Loading...</div>
 </div>
+
 <script>
 async function loadAdmin(){
   let res = await fetch('/api/suggestions');
   let data = await res.json();
   let html = '';
   data.reverse().forEach(s=>{
-    let id = s._id || s.id; // works for both MongoDB and old DB
+    let id = s._id || s.id;
     let time = s.createdAt ? new Date(s.createdAt).toLocaleString('en-GH') : '';
     html += `<div class="sugg"><div><div class="meta">${time}</div><div>${s.text || s.content}</div></div><button class="del" onclick="delSugg('${id}')">Delete</button></div>`;
   });
@@ -32,12 +55,8 @@ async function loadAdmin(){
 }
 async function delSugg(id){
   if(!confirm('Delete this suggestion?')) return;
-  let res = await fetch('/api/suggestions/' + id, {method:'DELETE'});
-  if(res.ok){
-    loadAdmin();
-  } else {
-    alert('Failed to delete. Check server.js');
-  }
+  await fetch('/api/suggestions/' + id, {method:'DELETE'});
+  loadAdmin();
 }
 loadAdmin();
 </script>
