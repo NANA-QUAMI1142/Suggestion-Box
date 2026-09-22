@@ -44,4 +44,11 @@ app.delete('/api/suggestions/:id', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.get('/api/admin-login', (req,res)=>{
+  if(req.query.password === process.env.ADMIN_PASSWORD){
+    res.json({ok:true});
+  } else {
+    res.json({ok:false});
+  }
+});
 app.listen(PORT, () => console.log('Server running on ' + PORT));
