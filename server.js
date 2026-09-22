@@ -1,56 +1,36 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const path = require('path');
-try { require('dotenv').config(); } catch(e) {}
 
 const app = express();
+app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // THIS IS IMPORTANT FOR LOGO
+app.use(express.static('public'));
 
-const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
-if (!mongoUri) {
-  console.log("ERROR: No MongoDB URI found! Set MONGODB_URI or MONGO_URI in Render");
-}
-mongoose.connect(mongoUri);
+// MongoDB
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost/suggestionBox');
 
 const suggestionSchema = new mongoose.Schema({
   text: String,
-  name: String,
-  anonymous: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now, expires: 259200 } // auto delete after 3 days
 });
 const Suggestion = mongoose.model('Suggestion', suggestionSchema);
 
-app.get('/api/suggestions', async (req, res) => {
-  const suggestions = await Suggestion.find().sort({ createdAt: -1 });
-  res.json(suggestions);
+// Get all suggestions
+app.get('/api/suggestions', async (req,res)=>{
+  const data = await Suggestion.find();
+  res.json(data);
 });
 
-app.post('/api/suggestions', async (req, res) => {
-  const { text, name, anonymous } = req.body;
-  if(!text) return res.status(400).json({error: 'No text'});
-  const sug = new Suggestion({ text, name, anonymous });
-  await sug.save();
-  res.json(sug);
+// Post new suggestion
+app.post('/api/suggestions', async (req,res)=>{
+  const s = new Suggestion({ text: req.body.text });
+  await s.save();
+  res.json({ok:true});
 });
 
-// NEW: ADMIN DELETE
-app.delete('/api/suggestions/:id', async (req, res) => {
-  if (req.headers['x-admin-password'] !== 'admin@00')  { 
-    return res.status(403).json({error: 'Wrong password'});
-  }
-  await Suggestion.findByIdAndDelete(req.params.id);
-  res.json({success: true});
-});
-
-const PORT = process.env.PORT || 3000;
-app.get('/api/admin-login', (req,res)=>{
-  if(req.query.password === process.env.ADMIN_PASSWORD){
-    res.json({ok:true});
-  } else {
-    res.json({ok:false});
-  }
-});
+// DELETE - THIS WAS MISSING!
 app.delete('/api/suggestions/:id', async (req,res)=>{
   try{
     await Suggestion.findByIdAndDelete(req.params.id);
@@ -59,4 +39,15 @@ app.delete('/api/suggestions/:id', async (req,res)=>{
     res.status(500).json({error:e.message});
   }
 });
-app.listen(PORT, () => console.log('Server running on ' + PORT));
+
+// Admin login check
+app.get('/api/admin-login', (req,res)=>{
+  if(req.query.password === process.env.ADMIN_PASSWORD){
+    res.json({ok:true});
+  } else {
+    res.json({ok:false});
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=> console.log('Server running on ' + PORT));
