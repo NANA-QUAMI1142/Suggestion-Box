@@ -7,7 +7,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public')); // THIS IS IMPORTANT FOR LOGO
 
-mongoose.connect(process.env.MONGODB_URI);
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+if (!mongoUri) {
+  console.log("ERROR: No MongoDB URI found! Set MONGODB_URI or MONGO_URI in Render");
+}
+mongoose.connect(mongoUri);
 
 const suggestionSchema = new mongoose.Schema({
   text: String,
