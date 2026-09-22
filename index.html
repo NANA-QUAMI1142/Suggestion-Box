@@ -3,33 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Suggestion Box</title>
+  <title>Audit Service Ghana - Suggestion Box</title>
   <style>
-    body { font-family: monospace; background: #f5f5f5; padding: 20px; max-width: 600px; margin: auto; }
-    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
-    textarea, input[type="text"] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 15px; max-width: 600px; margin: auto; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; overflow:hidden; }
+    .header { text-align: center; margin-bottom: 15px; }
+    .header img { width: 120px; }
+    .header h2 { margin: 5px 0 0 0; color: #0d5c4b; }
+    .header p { margin: 0; font-size: 13px; background: #d32f2f; color: white; display: inline-block; padding: 3px 12px; border-radius: 20px; }
+    textarea, input[type="text"] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-family: sans-serif; }
     textarea { height: 90px; }
     #nameField { display: none; margin-top: 10px; }
-    #submitBtn { width: 100%; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-    #submittedMsg { display: none; background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
+    #submitBtn { width: 100%; background: #0d5c4b; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+    #submittedMsg { display: none; background: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 8px; text-align: center; margin-top: 10px; }
     .sug-item { 
-      border-left: 4px solid #4CAF50; 
-      padding: 10px 12px; 
-      margin: 10px 0; 
+      border-left: 4px solid #0d5c4b; 
+      padding: 12px; 
+      margin: 12px 0; 
       background: #fafafa; 
-      border-radius: 6px; 
-      box-sizing: border-box;
-      word-break: break-all !important;
-      overflow-wrap: anywhere !important;
-      white-space: pre-wrap !important;
+      border-radius: 8px;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
-    .sug-meta { font-size: 11px; color: #888; margin-top: 5px; display: block; }
+    .sug-text { font-size: 15px; color: #222; white-space: pre-wrap; }
+    .sug-meta { font-size: 12px; color: #888; margin-top: 6px; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h2>💡 Suggestion Box</h2>
+    <div class="header">
+      <img src="/logo.png" alt="Audit Service Ghana">
+      <h2>AUDIT SERVICE, GHANA</h2>
+      <p>ASHANTI REGIONAL OFFICE</p>
+      <h3 style="margin-top:15px">💡 Suggestion Box</h3>
+    </div>
     <label style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
       <input type="checkbox" id="anonCheck" checked> Submit anonymously
     </label>
@@ -65,9 +73,12 @@ async function load() {
     let text = (s.text || s.message || '').toString();
     if (text.trim().startsWith('{"_id"')) return '';
     let displayName = s.anonymous ? 'Anonymous' : (s.name || 'Anonymous');
-    let time = s.createdAt ? new Date(s.createdAt).toLocaleString() : '';
-    // THIS FIXES THE - ISSUE
-    return `<div class="sug-item"><b>${displayName}:</b> ${text}<span class="sug-meta">${displayName} • ${time}</span></div>`;
+    let time = s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'}) : '';
+    // EXACT FORMAT YOU WANTED
+    return `<div class="sug-item">
+      <div class="sug-text">${text}</div>
+      <div class="sug-meta">${displayName} • ${time}</div>
+    </div>`;
   }).join('');
 }
 
@@ -76,22 +87,15 @@ async function submit() {
   if (!text) return;
   const isAnonymous = anonCheck.checked;
   const name = isAnonymous ? null : (nameInput.value.trim() || null);
-
   await fetch('/api/suggestions', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ text, name, anonymous: isAnonymous })
   });
-
   msg.value = ''; nameInput.value = '';
-  btn.style.display = 'none';
-  submittedMsg.style.display = 'block';
+  btn.style.display = 'none'; submittedMsg.style.display = 'block';
   load();
-
-  setTimeout(() => {
-    submittedMsg.style.display = 'none';
-    btn.style.display = 'block';
-  }, 3000);
+  setTimeout(() => { submittedMsg.style.display = 'none'; btn.style.display = 'block'; }, 3000);
 }
 
 btn.addEventListener('click', submit);

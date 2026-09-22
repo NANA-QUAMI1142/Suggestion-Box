@@ -21,6 +21,17 @@ app.get('/api/suggestions', async (req,res)=>{
   const list = await Suggestion.find().sort({createdAt:-1});
   res.json(list);
 });
+// ADMIN DELETE
+app.delete('/api/suggestions/:id', async (req, res) => {
+  const adminPassword = req.headers['x-admin-password'];
+  if (adminPassword !== 'admin0011') { // <-- CHANGE THIS PASSWORD
+    return res.status(403).json({error: 'Wrong password'});
+  }
+  try {
+    await Suggestion.findByIdAndDelete(req.params.id);
+    res.json({success: true});
+  } catch(e){ res.status(500).json({error: e.message}) }
+});
 
 app.post('/api/suggestions', async (req,res)=>{
   const {text, name, anonymous} = req.body;
