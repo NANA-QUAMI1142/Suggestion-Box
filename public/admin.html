@@ -1,33 +1,45 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Delete Suggestions</title>
-<style>body{font-family:sans-serif;max-width:600px;margin:auto;padding:15px}.card{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,.1);margin-bottom:10px}.del{float:right;background:#d32f2f;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer}</style>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Suggestion Box</title>
+<style>
+body{font-family:Arial;background:#f4f6f9;padding:20px}
+.box{max-width:600px;margin:auto;background:white;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
+.sugg{border:1px solid #eee;padding:12px;margin-top:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.meta{font-size:12px;color:#888}
+.del{background:#e74c3c;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer}
+</style>
 </head>
 <body>
-<h2>Admin Panel</h2>
-<input type="password" id="pass" placeholder="Enter admin password" style="width:100%;padding:10px;margin-bottom:10px">
-<button onclick="loadAdmin()" style="width:100%;padding:10px">Login & Load</button>
-<div id="list" style="margin-top:20px"></div>
+<div class="box">
+<h2>🔒 Admin Only</h2>
+<a href="/">← Back to Home</a>
+<div id="list">Loading...</div>
+</div>
 <script>
 async function loadAdmin(){
-  const password = document.getElementById('pass').value;
-  const res = await fetch('/api/suggestions?t='+Date.now());
-  const data = await res.json();
-  document.getElementById('list').innerHTML = data.map(s=>`
-    <div class="card">
-      <button class="del" onclick="delSug('${s._id}')">Delete</button>
-      <div>${s.text || s.message}</div>
-      <small style="color:#888">${s.anonymous?'Anonymous':s.name} • ${new Date(s.createdAt).toLocaleString()}</small>
-    </div>
-  `).join('');
+  let res = await fetch('/api/suggestions');
+  let data = await res.json();
+  let html = '';
+  data.reverse().forEach(s=>{
+    let id = s._id || s.id; // works for both MongoDB and old DB
+    let time = s.createdAt ? new Date(s.createdAt).toLocaleString('en-GH') : '';
+    html += `<div class="sugg"><div><div class="meta">${time}</div><div>${s.text || s.content}</div></div><button class="del" onclick="delSugg('${id}')">Delete</button></div>`;
+  });
+  document.getElementById('list').innerHTML = html || 'No suggestions';
 }
-async function delSug(id){
+async function delSugg(id){
   if(!confirm('Delete this suggestion?')) return;
-  const password = document.getElementById('pass').value;
-  await fetch('/api/suggestions/'+id, { method: 'DELETE', headers:{'x-admin-password': password} });
-  loadAdmin();
+  let res = await fetch('/api/suggestions/' + id, {method:'DELETE'});
+  if(res.ok){
+    loadAdmin();
+  } else {
+    alert('Failed to delete. Check server.js');
+  }
 }
+loadAdmin();
 </script>
 </body>
 </html>

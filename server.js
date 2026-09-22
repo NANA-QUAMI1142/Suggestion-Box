@@ -36,7 +36,7 @@ app.post('/api/suggestions', async (req, res) => {
 
 // NEW: ADMIN DELETE
 app.delete('/api/suggestions/:id', async (req, res) => {
-  if (req.headers['x-admin-password'] !== 'admin0011')  { 
+  if (req.headers['x-admin-password'] !== 'admin@00')  { 
     return res.status(403).json({error: 'Wrong password'});
   }
   await Suggestion.findByIdAndDelete(req.params.id);
@@ -49,6 +49,14 @@ app.get('/api/admin-login', (req,res)=>{
     res.json({ok:true});
   } else {
     res.json({ok:false});
+  }
+});
+app.delete('/api/suggestions/:id', async (req,res)=>{
+  try{
+    await Suggestion.findByIdAndDelete(req.params.id);
+    res.json({ok:true});
+  }catch(e){
+    res.status(500).json({error:e.message});
   }
 });
 app.listen(PORT, () => console.log('Server running on ' + PORT));
