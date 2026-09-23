@@ -19,6 +19,7 @@ button{width:100%;padding:12px;background:#1a8a4a;color:white;border:none;border
 <h3>All Suggestions</h3>
 <div id="list"></div>
 <button onclick="logout()" style="background:#777">Logout</button>
+<a href="/" style="display:block;text-align:center;margin-top:15px;font-size:13px;color:#666;text-decoration:none">← Back to Home</a>
 </div>
 </div>
 <script>
@@ -28,8 +29,7 @@ async function login(){
   if(!p) return;
   let res=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
   if(!res.ok){document.getElementById('error').innerText="❌ Wrong password!";return;}
-  currentPwd = p;
-  loadSuggestions();
+  currentPwd = p; loadSuggestions();
 }
 async function loadSuggestions(){
   let res=await fetch('/api/admin/suggestions',{headers:{'x-admin-password':currentPwd}});
@@ -38,10 +38,6 @@ async function loadSuggestions(){
   document.getElementById('adminContent').style.display='block';
   document.getElementById('list').innerHTML = data.length ? data.slice().reverse().map(s=>`<div style="border-left:4px solid #1a8a4a;background:#f9f9f9;padding:10px;margin:10px 0;border-radius:6px;font-size:14px"><small>${s.date}</small><br><br>${s.text}</div>`).join('') : "<p>No suggestions yet.</p>";
 }
-function logout(){
-  currentPwd=""; document.getElementById('pwd').value=""; 
-  document.getElementById('adminContent').style.display='none';
-  document.getElementById('loginBox').style.display='block';
-}
+function logout(){currentPwd="";document.getElementById('pwd').value="";document.getElementById('adminContent').style.display='none';document.getElementById('loginBox').style.display='block';}
 </script>
 </body></html>
