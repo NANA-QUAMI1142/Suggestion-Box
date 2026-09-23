@@ -3,62 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Panel</title>
+<title>Admin - Suggestion Box</title>
 <style>
-body{font-family:Arial;background:#f4f6f9;padding:20px}
-.box{max-width:600px;margin:auto;background:white;padding:25px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
-h2{margin-top:0}
-.back-btn{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  background:#f0f2f5;
-  color:#1a8a4a;
-  border:1px solid #d0d7de;
-  padding:8px 14px;
-  border-radius:20px;
-  font-size:13px;
-  font-weight:bold;
-  text-decoration:none;
-  cursor:pointer;
-  transition:0.2s;
-}
-.back-btn:hover{
-  background:#1a8a4a;
-  color:white;
-  border-color:#1a8a4a;
-}
-.sugg{border:1px solid #eee;padding:12px;margin-top:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
-.meta{font-size:11px;color:#888}
-.del{background:#e74c3c;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer}
-.del:hover{background:#c0392b}
+body{font-family:Arial;background:#f0f2f5;display:flex;justify-content:center;padding:20px}
+.card{background:white;width:100%;max-width:650px;padding:25px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+input{width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box;margin-top:10px}
+button{width:100%;padding:12px;background:#1a8a4a;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:10px}
+button:hover{background:#14723b}
+.sugg{border-left:4px solid #1a8a4a;background:#f9f9f9;padding:12px;margin:12px 0;border-radius:6px;text-align:left;font-size:14px}
+#adminContent{display:none}
+#error{color:red;font-size:13px;margin-top:8px}
 </style>
 </head>
 <body>
-<div class="box">
-<h2>🔒 Admin Only</h2>
-<a href="/" class="back-btn">← Back to Home</a>
-<div id="list" style="margin-top:20px">Loading...</div>
+<div class="card">
+<h2 style="text-align:center">🔒 Admin Login</h2>
+
+<div id="loginBox">
+<p style="font-size:13px;color:#666;text-align:center">Enter password to view suggestions</p>
+<input type="password" id="pwd" placeholder="Password (admin@00)">
+<button onclick="login()">Login</button>
+<p id="error"></p>
+</div>
+
+<div id="adminContent">
+<h3>All Anonymous Suggestions</h3>
+<div id="list">Loading...</div>
+<button onclick="logout()" style="background:#777;margin-top:20px">Logout</button>
+<a href="/" style="display:block;text-align:center;margin-top:15px;font-size:12px;color:#888">Back to Home</a>
+</div>
 </div>
 
 <script>
-async function loadAdmin(){
-  let res = await fetch('/api/suggestions');
+const ADMIN_DEFAULT = "admin@00";
+let savedPwd = localStorage.getItem('admin_pwd');
+if(savedPwd){ document.getElementById('pwd').value = savedPwd; login(); }
+
+async function login(){
+  let p = document.getElementById('pwd').value.trim();
+  if(!p) return;
+  let res = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+  if(!res.ok){
+    document.getElementById('error').innerText = "❌ Wrong password!";
+    return;
+  }
+  localStorage.setItem('admin_pwd', p);
+  loadSuggestions(p);
+}
+
+async function loadSuggestions(pwd){
+  let res = await fetch('/api/admin/suggestions',{headers:{'x-admin-password': pwd}});
+  if(res.status===403){
+    document.getElementById('error').innerText = "Unauthorized";
+    return;
+  }
   let data = await res.json();
-  let html = '';
-  data.reverse().forEach(s=>{
-    let id = s._id || s.id;
-    let time = s.createdAt ? new Date(s.createdAt).toLocaleString('en-GH') : '';
-    html += `<div class="sugg"><div><div class="meta">${time}</div><div>${s.text || s.content}</div></div><button class="del" onclick="delSugg('${id}')">Delete</button></div>`;
-  });
-  document.getElementById('list').innerHTML = html || 'No suggestions';
+  document.getElementById('loginBox').style.display='none';
+  document.getElementById('adminContent').style.display='block';
+  let list = document.getElementById('list');
+  if(data.length===0){ list.innerHTML = "<p>No suggestions yet.</p>"; return; }
+  list.innerHTML = data.slice().reverse().map(s=>`<div class="sugg"><small>${s.date} - Anonymous</small><br><br>${s.text}</div>`).join('');
 }
-async function delSugg(id){
-  if(!confirm('Delete this suggestion?')) return;
-  await fetch('/api/suggestions/' + id, {method:'DELETE'});
-  loadAdmin();
+
+function logout(){
+  localStorage.removeItem('admin_pwd');
+  location.reload();
 }
-loadAdmin();
 </script>
 </body>
 </html>
