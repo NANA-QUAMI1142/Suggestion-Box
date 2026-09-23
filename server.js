@@ -6,9 +6,12 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin@00';
 
-// --- YOUR CLOUD KEYS (for 3-day keep on free plan) ---
-const BIN_ID = process.env.BIN_ID || '6ab3d2a3ffd5d1605326cf2f';
-const BIN_KEY = process.env.BIN_KEY || '$2a$10$SzX7NkdaOM7azha4IOiMwekKJ8Y8cqyw/9WlcDB1gs.opuQedr4Na';
+// --- FIXED: trims hidden line breaks ---
+let BIN_ID = (process.env.BIN_ID || '6ab3d2a3ffd5d1605326cf2f').trim().replace(/\s+/g, '');
+let BIN_KEY = (process.env.BIN_KEY || '$2a$10$SzX7NkdaOM7azha4IOiMwekKJ8Y8cqyw/9WlcDB1gs.opuQedr4Na').trim().replace(/\s+/g, '');
+
+console.log(`[config] BIN_ID length ${BIN_ID.length}`);
+console.log(`[config] BIN_KEY length ${BIN_KEY.length}`);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -25,40 +28,67 @@ function loadJsonSafe(p){
 let suggestions = loadJsonSafe(suggPath) || [];
 let staffIds = loadJsonSafe(staffPath) || [];
 
-// Try recover old places
 let old1 = loadJsonSafe(path.join(__dirname, 'suggestions.json'));
 let old2 = loadJsonSafe(path.join(__dirname, 'public', 'suggestions.json'));
 if(old1 && old1.length > suggestions.length) suggestions = old1;
 if(old2 && old2.length > suggestions.length) suggestions = old2;
 
-// --- CLOUD LOAD / SAVE ---
+// --- PATCHED CLOUD LOAD ---
 async function loadFromCloud(){
+  if(!BIN_ID) return;
+  const url = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`;
   try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-      headers: { 'X-Master-Key': BIN_KEY }
+    console.log(`Cloud load trying: ${url}`);
+    let res = await fetch(url, {
+      headers: {
+        'X-Master-Key': BIN_KEY,
+        'X-Access-Key': BIN_KEY,
+        'User-Agent': 'suggestion-box/1.0'
+      }
     });
-    const data = await res.json();
-    const record = data.record;
+    console.log(`Cloud status (with key): ${res.status}`);
+    let text = await res.text();
+
+    if(!res.ok || text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<')) {
+      console.log('With-key failed, retrying as PUBLIC bin...');
+      res = await fetch(url, { headers: { 'User-Agent': 'suggestion-box/1.0' } });
+      console.log(`Cloud status (public): ${res.status}`);
+      text = await res.text();
+    }
+
+    if(text.trim().startsWith('<!DOCTYPE')){
+      throw new Error(`HTML returned: ${text.slice(0,200)}`);
+    }
+
+    const data = JSON.parse(text);
+    const record = data.record || data;
     if(Array.isArray(record)){
-      // old format: just array
       if(record.length > 0 && record[0].text) suggestions = record;
     } else if(record && typeof record === 'object'){
       if(record.suggestions) suggestions = record.suggestions;
       if(record.staffIds) staffIds = record.staffIds;
     }
     console.log('Cloud loaded:', suggestions.length, 'suggestions,', staffIds.length, 'staff');
-  } catch(e){ console.log('Cloud load failed, using local', e.message); }
+  } catch(e){
+    console.log('Cloud load failed, using local:', e.message);
+  }
 }
 
 async function saveToCloud(){
+  if(!BIN_ID ||!BIN_KEY) return;
   try {
-    await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': BIN_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': BIN_KEY,
+        'X-Access-Key': BIN_KEY,
+        'User-Agent': 'suggestion-box/1.0'
+      },
       body: JSON.stringify({ suggestions, staffIds })
     });
+    console.log(`Cloud save status: ${res.status}`);
   } catch(e){ console.log('Cloud save error', e.message); }
-  // also keep local backup
   try {
     fs.writeFileSync(suggPath, JSON.stringify(suggestions, null, 2));
     fs.writeFileSync(staffPath, JSON.stringify(staffIds, null, 2));
@@ -81,7 +111,6 @@ function cleanOld(){
   }
 }
 
-// Load cloud first
 loadFromCloud().then(()=>{ cleanOld(); });
 setInterval(cleanOld, 60*60*1000);
 
