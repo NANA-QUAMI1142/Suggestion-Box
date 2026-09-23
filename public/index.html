@@ -1,49 +1,58 @@
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>E-Suggest</title>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Audit Service - Suggestion Box</title>
 <style>
 body{font-family:Arial;background:#f0f2f5;display:flex;justify-content:center;padding:20px}
-.card{background:white;width:100%;max-width:500px;padding:30px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);text-align:center}
-.logo{width:60px;margin-bottom:10px}
-textarea{width:100%;height:110px;padding:12px;border-radius:8px;border:1px solid #ddd;resize:none;box-sizing:border-box;margin-top:15px}
-.checkbox-wrap{text-align:left;font-size:13px;margin:10px 0}
-button{width:100%;background:#1a8a4a;color:white;border:none;padding:12px;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:10px}
+.card{background:white;width:100%;max-width:500px;padding:25px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center}
+.logo{width:110px;margin:0 auto 10px;display:block}
+input,textarea{width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box;margin-top:8px}
+button{width:100%;padding:12px;background:#1a8a4a;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:12px}
 button:hover{background:#14723b}
-.success{display:none;background:#e6f9ed;color:#1a8a4a;padding:12px;border-radius:8px;margin-top:15px;font-weight:bold;border:1px solid #b7e6c5}
-.admin-link{display:block;margin-top:20px;font-size:12px;color:#888;text-decoration:none}
-</style>
-</head>
-<body>
+#error{color:red;font-size:13px;margin-top:8px}
+</style></head><body>
 <div class="card">
-<img src="/logo.png" alt="Company Logo" style="width:100px; height:100px; 
-object-fit:contain; display:block; margin:0 auto 15px; border-radius:12px;">
-<h2>💡 Suggestion Box</h2>
-<p style="font-size:13px;color:#666">Share your ideas anonymously!</p>
-
-<textarea id="suggestionText" placeholder="Type your suggestion here..."></textarea>
-<div class="checkbox-wrap"><input type="checkbox" checked disabled> Submit anonymously</div>
-<button onclick="submitSuggestion()">Submit Suggestion</button>
-
-<div id="successMsg" class="success">✅ Your suggestion has been submitted anonymously! Thank you.</div>
-
-<a href="/admin.html" class="admin-link">🔒 Admin Login</a>
+<img src="/logo.png" class="logo">
+<div id="gate">
+<h3>Staff Verification</h3>
+<p style="font-size:13px;color:#666">Enter your Staff ID to continue</p>
+<input id="staffId" placeholder="e.g. AUD001">
+<button onclick="verify()">Verify & Continue</button>
+<p id="error"></p>
 </div>
 
+<div id="suggestBox" style="display:none">
+<h3>Suggestion Box</h3>
+<p style="font-size:13px;color:#666">Your suggestion is anonymous</p>
+<textarea id="text" rows="5" placeholder="Type your suggestion..."></textarea>
+<button onclick="send()">Submit Suggestion</button>
+<p id="msg" style="font-size:13px;color:green"></p>
+</div>
+</div>
 <script>
-async function submitSuggestion(){
-  let text = document.getElementById('suggestionText').value.trim();
-  if(!text) return alert('Please type a suggestion');
-  let res = await fetch('/api/suggestions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+let currentStaffId = localStorage.getItem('staffId') || '';
+if(currentStaffId){ document.getElementById('staffId').value = currentStaffId; }
+
+async function verify(){
+  let id = document.getElementById('staffId').value.trim();
+  if(!id) return;
+  let res = await fetch('/api/staff/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({staffId:id})});
+  let data = await res.json();
+  if(!res.ok){ document.getElementById('error').innerText = data.message || 'Invalid Staff ID'; return; }
+  currentStaffId = id;
+  localStorage.setItem('staffId', id);
+  document.getElementById('gate').style.display='none';
+  document.getElementById('suggestBox').style.display='block';
+}
+
+async function send(){
+  let text = document.getElementById('text').value;
+  if(!text.trim()) return;
+  let res = await fetch('/api/suggestions',{method:'POST',headers:{'Content-Type':'application/json','x-staff-id':currentStaffId},body:JSON.stringify({text})});
   if(res.ok){
-    document.getElementById('suggestionText').value='';
-    let msg = document.getElementById('successMsg');
-    msg.style.display='block';
-    setTimeout(()=>{msg.style.display='none'}, 4000);
+    document.getElementById('msg').innerText='✅ Thank you! Suggestion submitted anonymously.';
+    document.getElementById('text').value='';
+  } else {
+    document.getElementById('msg').innerText='❌ Invalid Staff ID. Please verify again.';
   }
 }
 </script>
-</body>
-</html>
+</body></html>
