@@ -1,20 +1,26 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Audit Service - Suggestion Box</title>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Service - Suggestion Box</title>
 <style>
 body{font-family:Arial;background:#e8eef3;display:flex;justify-content:center;padding:20px}
-.card{background:white;width:100%;max-width:500px;padding:30px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center}
+.card{background:white;width:100%;max-width:500px;padding:30px;border-radius:16px;
+  box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center}
 .logo{width:120px;margin:0 auto 10px;display:block}
-input,textarea{width:100%;padding:13px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box;margin-top:8px;font-size:14px}
-button{width:100%;padding:13px;background:#0f766e;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:12px;font-size:15px}
+input,textarea{width:100%;padding:13px;border-radius:8px;border:1px solid #ddd;
+  box-sizing:border-box;margin-top:8px;font-size:14px}
+button{width:100%;padding:13px;background:#0f766e;color:white;border:none;
+  border-radius:8px;font-weight:bold;cursor:pointer;margin-top:12px;font-size:15px}
 button:hover{background:#0d5f59}
 #error{color:red;font-size:13px;margin-top:8px}
-.admin-link{display:inline-block;margin-top:22px;font-size:13px;color:#888;text-decoration:none;border:1px solid #ddd;padding:7px 18px;border-radius:20px}
+.admin-link{display:inline-block;margin-top:22px;font-size:13px;color:#888;text-decoration:none;
+  border:1px solid #ddd;padding:7px 18px;border-radius:20px}
 .admin-link:hover{background:#f5f5f5;color:#333}
 </style></head><body>
 <div class="card">
 <img src="/logo.png" class="logo" onerror="this.style.display='none'">
 <div style="color:#3a5a8a;font-weight:bold;font-size:13px;letter-spacing:.5px">AUDIT SERVICE,<br>GHANA</div>
-<div style="background:#8b1a1a;color:white;font-size:9px;display:inline-block;padding:2px 8px;border-radius:4px;margin:6px 0 14px">ASHANTI REGIONAL OFFICE</div>
+<div style="background:#8b1a1a;color:white;font-size:9px;display:inline-block;
+padding:2px 8px;border-radius:4px;margin:6px 0 14px">ASHANTI REGIONAL OFFICE</div>
 
 <div id="gate">
 <h3 style="margin:8px 0">Suggestion Box</h3>
@@ -36,13 +42,13 @@ button:hover{background:#0d5f59}
 <a href="/admin.html" class="admin-link">🔒 Admin Login</a>
 </div>
 <script>
-let currentStaffId = localStorage.getItem('staffId') || '';
-if(currentStaffId){ document.getElementById('staffId').value = currentStaffId; }
+let currentStaffId = '';
 
 async function verify(){
   let id = document.getElementById('staffId').value.trim();
   if(!id){ document.getElementById('error').innerText='Please enter Staff ID'; return; }
-  let res = await fetch('/api/staff/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({staffId:id})});
+  let res = await fetch('/api/staff/verify',{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({staffId:id})});
   let data = await res.json().catch(()=>({}));
   if(!res.ok){ document.getElementById('error').innerText = data.message || 'Invalid Staff ID'; return; }
   currentStaffId = id;
@@ -55,7 +61,8 @@ async function verify(){
 async function send(){
   let text = document.getElementById('text').value;
   if(!text.trim()) return;
-  let res = await fetch('/api/suggestions',{method:'POST',headers:{'Content-Type':'application/json','x-staff-id':currentStaffId},body:JSON.stringify({text})});
+  let res = await fetch('/api/suggestions',{method:'POST',headers:{'Content-Type':'application/json',
+  'x-staff-id':currentStaffId},body:JSON.stringify({text})});
   if(res.ok){
     document.getElementById('msg').innerText='✅ Thank you! Suggestion submitted anonymously.';
     document.getElementById('text').value='';
@@ -72,4 +79,8 @@ function logout(){
   document.getElementById('staffId').value='';
 }
 </script>
+window.onload = ()=>{ 
+  localStorage.removeItem('staffId');
+  document.getElementById('staffId').value=''; 
+};
 </body></html>
