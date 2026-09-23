@@ -1,43 +1,67 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin</title>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin</title>
 <style>
 body{font-family:Arial;background:#f0f2f5;display:flex;justify-content:center;padding:20px}
-.card{background:white;width:100%;max-width:650px;padding:25px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
-input{width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box}
-button{width:100%;padding:12px;background:#1a8a4a;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:10px}
+.card{background:white;width:100%;max-width:700px;padding:25px;border-radius:16px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.08);text-align:center}
+.logo{width:90px;height:90px;object-fit:contain;margin:0 auto 10px;display:block;border-radius:12px}
+input{width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box;text-align:left}
+button{width:100%;padding:12px;background:#1a8a4a;color:white;border:none;border-radius:8px;font-weight:bold;
+  cursor:pointer;margin-top:10px}
+button:hover{background:#14723b}
+.sugg{border-left:4px solid #1a8a4a;background:#f9f9f9;padding:12px;margin:14px 0;border-radius:8px;text-align:left;position:relative}
+.del{position:absolute;top:8px;right:8px;background:#ff3b30;width:auto;padding:4px 10px;font-size:12px;border-radius:6px}
+.del:hover{background:#d9342b}
+.home-btn{display:block;text-align:center;margin-top:18px;padding:11px;background:white;border:1px solid #ddd;
+  color:#333;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px}
+.home-btn:hover{background:#f5f5f5}
 #error{color:red;font-size:13px;margin-top:8px}
 </style>
 </head><body>
 <div class="card">
-<h2 style="text-align:center">🔒 Admin Login</h2>
+<img src="/logo.png" class="logo" onerror="this.style.display='none'">
+<h2 style="margin:5px 0">🔒 Admin Login</h2>
 <div id="loginBox">
 <input type="password" id="pwd" placeholder="Password">
 <button onclick="login()">Login</button>
 <p id="error"></p>
+<a href="/" class="home-btn">← Back to Home</a>
 </div>
 <div id="adminContent" style="display:none">
-<h3>All Suggestions</h3>
+<h3 style="text-align:left">All Suggestions</h3>
 <div id="list"></div>
 <button onclick="logout()" style="background:#777">Logout</button>
-<a href="/" style="display:block;text-align:center;margin-top:15px;font-size:13px;color:#666;text-decoration:none">← Back to Home</a>
+<a href="/" class="home-btn">← Back to Home</a>
 </div>
 </div>
 <script>
-let currentPwd = "";
+let currentPwd="";
 async function login(){
-  let p=document.getElementById('pwd').value;
-  if(!p) return;
-  let res=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+  let p=document.getElementById('pwd').value; if(!p) return;
+  let res=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({password:p})});
   if(!res.ok){document.getElementById('error').innerText="❌ Wrong password!";return;}
-  currentPwd = p; loadSuggestions();
+  currentPwd=p; loadSuggestions();
 }
 async function loadSuggestions(){
   let res=await fetch('/api/admin/suggestions',{headers:{'x-admin-password':currentPwd}});
   let data=await res.json();
   document.getElementById('loginBox').style.display='none';
   document.getElementById('adminContent').style.display='block';
-  document.getElementById('list').innerHTML = data.length ? data.slice().reverse().map(s=>`<div style="border-left:4px solid #1a8a4a;background:#f9f9f9;padding:10px;margin:10px 0;border-radius:6px;font-size:14px"><small>${s.date}</small><br><br>${s.text}</div>`).join('') : "<p>No suggestions yet.</p>";
+  document.getElementById('list').innerHTML=data.length?data.slice().reverse().map(s=>`
+    <div class="sugg">
+      <button class="del" onclick="delSug(${s.id})">Delete</button>
+      <small style="color:#888">${s.date}</small><br><br>${s.text}
+    </div>`).join(''):"<p>No suggestions yet.</p>";
 }
-function logout(){currentPwd="";document.getElementById('pwd').value="";document.getElementById('adminContent').style.display='none';document.getElementById('loginBox').style.display='block';}
+async function delSug(id){
+  if(!confirm("Delete this suggestion?")) return;
+  await fetch(`/api/admin/suggestions/${id}`,{method:'DELETE',headers:{'x-admin-password':currentPwd}});
+  loadSuggestions();
+}
+function logout(){currentPwd="";document.getElementById('pwd').value="";
+document.getElementById('adminContent').style.display='none';
+document.getElementById('loginBox').style.display='block';}
 </script>
 </body></html>

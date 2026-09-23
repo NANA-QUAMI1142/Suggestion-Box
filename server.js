@@ -42,5 +42,16 @@ app.get('/api/admin/suggestions', (req, res) => {
   }
   res.json(suggestions);
 });
+// ADMIN: Delete a suggestion - PROTECTED
+app.delete('/api/admin/suggestions/:id', (req, res) => {
+  const auth = req.headers['x-admin-password'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: "Unauthorized" });
+  }
+  const id = Number(req.params.id);
+  suggestions = suggestions.filter(s => s.id !== id);
+  fs.writeFileSync(filePath, JSON.stringify(suggestions, null, 2));
+  res.json({ success: true });
+});
 
 app.listen(PORT, () => console.log(`Running on ${PORT}`));
