@@ -1,7 +1,6 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -9,7 +8,6 @@ const PORT = process.env.PORT || 10000;
 // Your admin password 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin@00';
 
-app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
