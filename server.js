@@ -1,50 +1,46 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const path = require('path');
-
+const fs = require('fs');
 const app = express();
+const PORT = process.env.PORT || 10000;
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin@00";
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const MONGO_URI = process.env.MONGO_URI;
-if(MONGO_URI){
-  mongoose.connect(MONGO_URI).then(()=>console.log("MongoDB connected")).catch(e=>console.log("Mongo error:", e.message));
-} else {
-  console.log("WARNING: MONGO_URI missing");
+let suggestions = [];
+const filePath = path.join(__dirname, 'suggestions.json');
+if (fs.existsSync(filePath)) {
+  try { suggestions = JSON.parse(fs.readFileSync(filePath)); } catch(e){ suggestions = []; }
 }
 
-const suggestionSchema = new mongoose.Schema({
-  text: String,
-  createdAt: { type: Date, default: Date.now, expires: 259200 }
-});
-const Suggestion = mongoose.model('Suggestion', suggestionSchema);
-
-app.get('/api/suggestions', async (req,res)=>{
-  try{
-    const data = await Suggestion.find();
-    res.json(data);
-  }catch(e){ res.json([]); }
+// PUBLIC: User can SUBMIT
+app.post('/api/suggestions', (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: "Empty" });
+  const newSug = { id: Date.now(), text, date: new Date().toLocaleString(), anonymous: true };
+  suggestions.push(newSug);
+  fs.writeFileSync(filePath, JSON.stringify(suggestions, null, 2));
+  res.json({ success: true, message: "Submitted anonymously" });
 });
 
-app.post('/api/suggestions', async (req,res)=>{
-  try{
-    const s = new Suggestion({ text: req.body.text });
-    await s.save();
-    res.json({ok:true});
-  }catch(e){ res.status(500).json({error:e.message}); }
+// ADMIN: Login check
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (password === ADMIN_PASSWORD) {
+    return res.json({ success: true });
+  }
+  return res.status(401).json({ success: false });
 });
 
-app.delete('/api/suggestions/:id', async (req,res)=>{
-  try{
-    await Suggestion.findByIdAndDelete(req.params.id);
-    res.json({ok:true});
-  }catch(e){ res.status(500).json({error:e.message}); }
+// ADMIN: Get all suggestions - PROTECTED
+app.get('/api/admin/suggestions', (req, res) => {
+  const auth = req.headers['x-admin-password'];
+  if (auth !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: "Unauthorized" });
+  }
+  res.json(suggestions);
 });
 
-app.get('/api/admin-login', (req,res)=>{
-  if(req.query.password === process.env.ADMIN_PASSWORD) res.json({ok:true});
-  else res.json({ok:false});
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, ()=> console.log('Server running on ' + PORT));
+app.listen(PORT, () => console.log(`Running on ${PORT}`));
